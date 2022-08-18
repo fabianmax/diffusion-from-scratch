@@ -1,5 +1,5 @@
 from inspect import isfunction
-from torch import nn, einsum
+from torch import nn
 
 
 def exists(x):

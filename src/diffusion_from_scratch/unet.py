@@ -1,14 +1,12 @@
-import math
-from inspect import isfunction
+import torch
+from torch import nn
 from functools import partial
 
-import matplotlib.pyplot as plt
-from tqdm.auto import tqdm
-from einops import rearrange
-
-import torch
-from torch import nn, einsum
-import torch.nn.functional as F
+from src.diffusion_from_scratch.utils import default, exists, upsample, downsample, Residual
+from src.diffusion_from_scratch.blocks import ConvNextBlock, ResnetBlock
+from src.diffusion_from_scratch.normalizer import PreNorm
+from src.diffusion_from_scratch.embeddings import SinusoidalPositionEmbeddings
+from src.diffusion_from_scratch.attention import LinearAttention, Attention
 
 
 class Unet(nn.Module):
@@ -67,7 +65,7 @@ class Unet(nn.Module):
                         block_klass(dim_in, dim_out, time_emb_dim=time_dim),
                         block_klass(dim_out, dim_out, time_emb_dim=time_dim),
                         Residual(PreNorm(dim_out, LinearAttention(dim_out))),
-                        Downsample(dim_out) if not is_last else nn.Identity(),
+                        downsample(dim_out) if not is_last else nn.Identity(),
                     ]
                 )
             )
@@ -86,7 +84,7 @@ class Unet(nn.Module):
                         block_klass(dim_out * 2, dim_in, time_emb_dim=time_dim),
                         block_klass(dim_in, dim_in, time_emb_dim=time_dim),
                         Residual(PreNorm(dim_in, LinearAttention(dim_in))),
-                        Upsample(dim_in) if not is_last else nn.Identity(),
+                        upsample(dim_in) if not is_last else nn.Identity(),
                     ]
                 )
             )
