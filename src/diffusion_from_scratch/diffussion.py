@@ -66,3 +66,27 @@ def q_sample(x_start, t, noise=None, timesteps=200):
     )
 
     return sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
+
+
+def p_losses(denoise_model, x_start, t, noise=None, loss_type="l1"):
+    """
+    Loss function for DDPM as in https://arxiv.org/abs/2006.11239
+    """
+    if noise is None:
+        noise = torch.randn_like(x_start)
+
+    # Create a noisy version of the input, then let the model predict the added noise based on the noisy input
+    x_noisy = q_sample(x_start=x_start, t=t, noise=noise)
+    predicted_noise = denoise_model(x_noisy, t)
+
+    # Loss is the difference between the noise and the predicted noise
+    if loss_type == 'l1':
+        loss = F.l1_loss(noise, predicted_noise)
+    elif loss_type == 'l2':
+        loss = F.mse_loss(noise, predicted_noise)
+    elif loss_type == "huber":
+        loss = F.smooth_l1_loss(noise, predicted_noise)
+    else:
+        raise NotImplementedError()
+
+    return loss
