@@ -54,7 +54,7 @@ model.to(device)
 
 # Optimzer and training parameters
 optimizer = Adam(model.parameters(), lr=1e-3)
-epochs = 10
+epochs = 25
 save_and_sample_every = 1000
 
 # Train run
