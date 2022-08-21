@@ -17,9 +17,11 @@ channels = 1
 batch_size = 128
 timesteps = 200
 results_folder = Path("./results")
+model_folder = Path("./models")
 
 # Checks
 results_folder.mkdir(exist_ok=True)
+model_folder.mkdir(exist_ok=True)
 
 # load dataset from the hub
 dataset = load_dataset("fashion_mnist")
@@ -64,7 +66,7 @@ for epoch in range(epochs):
         batch_size = batch["pixel_values"].shape[0]
         batch = batch["pixel_values"].to(device)
 
-        # Algorithm 1 line 3: sample t uniformally for every example in the batch
+        # Algorithm 1 line 3: sample t uniformly for every example in the batch
         t = torch.randint(0, timesteps, (batch_size,), device=device).long()
 
         # Calculate the losses between predicted and actual noise
@@ -84,6 +86,9 @@ for epoch in range(epochs):
             all_images = torch.cat(all_images_list, dim=0)
             all_images = (all_images + 1) * 0.5
             save_image(all_images, str(results_folder / f'sample-{milestone}.png'), nrow=6)
+
+# Save model
+torch.save(model, str(model_folder / "model.pt"))
 
 # sample 64 images (reverse diffusion)
 samples = sample(model, image_size=image_size, batch_size=64, channels=channels)
