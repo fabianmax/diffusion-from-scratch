@@ -89,7 +89,7 @@ for epoch in range(epochs):
 torch.save(model, str(model_folder / "model.pt"))
 
 # sample 64 images (reverse diffusion)
-samples = sample(model, image_size=image_size, batch_size=64, channels=channels)
+samples = sample(model, diff_dict=diffusion_params, image_size=image_size, batch_size=64, channels=channels)
 
 # show a random one
 random_index = 5
