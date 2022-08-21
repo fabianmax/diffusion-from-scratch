@@ -46,8 +46,6 @@ elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
 else:
     device = 'cpu'
 
-device = 'cpu'
-
 # Create model
 model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,))
 model.to(device)
