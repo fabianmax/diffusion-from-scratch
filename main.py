@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 from torch.optim import Adam
 from src.diffusion_from_scratch.diffusion import p_losses, sample, create_diffusion_params
-from src.diffusion_from_scratch.unet import Unet
+from src.diffusion_from_scratch.unet import UNet
 from src.diffusion_from_scratch.utils import img_to_tensor_pipeline, num_to_groups
 
 # settings
@@ -30,7 +30,9 @@ dataset = load_dataset("fashion_mnist")
 transformed_dataset = dataset.with_transform(img_to_tensor_pipeline).remove_columns(["label"])
 
 # create dataloader
-dataloader = DataLoader(transformed_dataset["train"], batch_size=batch_size, shuffle=True)
+dataloader_train = DataLoader(transformed_dataset["train"], batch_size=batch_size, shuffle=True)
+dataloader_val = DataLoader(transformed_dataset["test"], batch_size=batch_size, shuffle=True)
+
 
 # define the diffusion process parameters
 diffusion_params = create_diffusion_params(timesteps=timesteps)
@@ -47,7 +49,7 @@ else:
     device = 'cpu'
 
 # Create model
-model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,))
+model = UNet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,))
 model.to(device)
 
 # Optimzer and training parameters
@@ -57,7 +59,9 @@ save_and_sample_every = 1000
 
 # Train run
 for epoch in range(epochs):
-    for step, batch in enumerate(dataloader):
+
+    model.train()
+    for step, batch in enumerate(dataloader_train):
 
         optimizer.zero_grad()
 
@@ -71,7 +75,7 @@ for epoch in range(epochs):
         loss = p_losses(model, batch, t, diff_dict=diffusion_params, loss_type="huber")
 
         if step % 100 == 0:
-            print(f"Loss @Epoch {epoch} - Step {step}: {loss.item()}")
+            print(f"Train Loss @Epoch {epoch} - Step {step}: {loss.item()}")
 
         loss.backward()
         optimizer.step()
@@ -85,6 +89,23 @@ for epoch in range(epochs):
             all_images = (all_images + 1) * 0.5
             save_image(all_images, str(results_folder / f'sample-{milestone}.png'), nrow=6)
 
+    model.eval()
+    loss_val = 0
+    with torch.no_grad():
+        for _, batch_val in enumerate(dataloader_val):
+
+            batch_val_size = batch_val["pixel_values"].shape[0]
+            batch_val = batch_val["pixel_values"].to(device)
+
+            # Algorithm 1 line 3: sample t uniformly for every example in the batch
+            t_val = torch.randint(0, timesteps, (batch_val_size,), device=device).long()
+
+            # Calculate the losses between predicted and actual noise
+            loss = p_losses(model, batch_val, t_val, diff_dict=diffusion_params, loss_type="huber")
+            loss_val += loss.item()
+
+        print(f"Validation Loss @Epoch {epoch}: {loss_val / len(dataloader_val)}")
+
 # Save model
 torch.save(model, str(model_folder / "diffusion_model.pt"))
 
@@ -92,11 +113,11 @@ torch.save(model, str(model_folder / "diffusion_model.pt"))
 samples = sample(model, diff_dict=diffusion_params, image_size=image_size, batch_size=64, channels=channels)
 
 # show a random one
-random_index = 2
+random_index = 5
 plt.imshow(samples[-1][random_index].reshape(image_size, image_size, channels), cmap="gray")
 
 # Create a gif
-random_index = 53
+random_index = 50
 
 fig = plt.figure()
 ims = []

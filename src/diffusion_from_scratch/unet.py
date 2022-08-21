@@ -50,7 +50,7 @@ class Residual(nn.Module):
         return self.fn(x, *args, **kwargs) + x
 
 
-class Unet(nn.Module):
+class UNet(nn.Module):
     """ U-Net implementation as in https://arxiv.org/abs/1505.04597
 
     Network takes as input a batch of noisy images and noise lvls and should predict the noise added to the input.
