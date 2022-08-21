@@ -52,7 +52,7 @@ model.to(device)
 
 # Optimzer and training parameters
 optimizer = Adam(model.parameters(), lr=1e-3)
-epochs = 5
+epochs = 10
 save_and_sample_every = 1000
 
 # Train run
@@ -86,13 +86,13 @@ for epoch in range(epochs):
             save_image(all_images, str(results_folder / f'sample-{milestone}.png'), nrow=6)
 
 # Save model
-torch.save(model, str(model_folder / "model.pt"))
+torch.save(model, str(model_folder / "diffusion_model.pt"))
 
 # sample 64 images (reverse diffusion)
 samples = sample(model, diff_dict=diffusion_params, image_size=image_size, batch_size=64, channels=channels)
 
 # show a random one
-random_index = 5
+random_index = 2
 plt.imshow(samples[-1][random_index].reshape(image_size, image_size, channels), cmap="gray")
 
 # Create a gif
