@@ -5,6 +5,8 @@ from src.diffusion_from_scratch.utils import exists
 
 
 class Block(nn.Module):
+    """ Base block with convolution, normalization, activation, and optinal scaling.
+    """
     def __init__(self, dim, dim_out, groups=8):
         super().__init__()
         self.proj = nn.Conv2d(dim, dim_out, 3, padding=1)
@@ -23,8 +25,8 @@ class Block(nn.Module):
         return x
 
 
-class ResnetBlock(nn.Module):
-    """https://arxiv.org/abs/1512.03385"""
+class ResNetBlock(nn.Module):
+    """ResNet block as in https://arxiv.org/abs/1512.03385"""
 
     def __init__(self, dim, dim_out, *, time_emb_dim=None, groups=8):
         super().__init__()
@@ -50,7 +52,7 @@ class ResnetBlock(nn.Module):
 
 
 class ConvNextBlock(nn.Module):
-    """https://arxiv.org/abs/2201.03545"""
+    """ConvNext block as in https://arxiv.org/abs/2201.03545"""
 
     def __init__(self, dim, dim_out, *, time_emb_dim=None, mult=2, norm=True):
         super().__init__()

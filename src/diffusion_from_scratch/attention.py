@@ -4,6 +4,8 @@ from einops import rearrange
 
 
 class Attention(nn.Module):
+    """ Classic multi-head self-attention as in Vaswani et al. 2017.
+    """
     def __init__(self, dim, heads=4, dim_head=32):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -30,6 +32,9 @@ class Attention(nn.Module):
 
 
 class LinearAttention(nn.Module):
+    """ Linear attention variant as Shen et al. 2018.
+    O(n) for n = seq_len in time and memory
+    """
     def __init__(self, dim, heads=4, dim_head=32):
         super().__init__()
         self.scale = dim_head**-0.5

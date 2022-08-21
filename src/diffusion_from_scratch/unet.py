@@ -2,14 +2,76 @@ import torch
 from torch import nn
 from functools import partial
 
-from src.diffusion_from_scratch.utils import default, exists, upsample, downsample, Residual
-from src.diffusion_from_scratch.blocks import ConvNextBlock, ResnetBlock
-from src.diffusion_from_scratch.normalizer import PreNorm
+from src.diffusion_from_scratch.utils import default, exists
+from src.diffusion_from_scratch.blocks import ConvNextBlock, ResNetBlock
 from src.diffusion_from_scratch.embeddings import SinusoidalPositionEmbeddings
 from src.diffusion_from_scratch.attention import LinearAttention, Attention
 
 
+def upsample(dim):
+    """ Alias for nn.ConvTranspose2d.
+    """
+    return nn.ConvTranspose2d(dim, dim, 4, 2, 1)
+
+
+def downsample(dim):
+    """ Alias for nn.Conv2d.
+    """
+    return nn.Conv2d(dim, dim, 4, 2, 1)
+
+
+class PreNorm(nn.Module):
+    """ Applies group normalization BEFORE a function (e.g. attention layer).
+    """
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.fn = fn
+        self.norm = nn.GroupNorm(1, dim)
+
+    def forward(self, x):
+        x = self.norm(x)
+        return self.fn(x)
+
+
+class Residual(nn.Module):
+    """Residual module, just adds the input to the output of the given function.
+
+    Args:
+        fn (nn.Module): Function where input is added to output
+
+    Returns:
+        torch.Tensor: Output of function
+    """
+    def __init__(self, fn):
+        super().__init__()
+        self.fn = fn
+
+    def forward(self, x, *args, **kwargs):
+        return self.fn(x, *args, **kwargs) + x
+
+
 class Unet(nn.Module):
+    """ U-Net implementation as in https://arxiv.org/abs/1505.04597
+
+    Network takes as input a batch of noisy images and noise lvls and should predict the noise added to the input.
+    Input: noisy images of shape (batch_size, num_channels, height, width) AND
+           batch of noise levels of shape (batch_size, 1)
+    Output: Noise prediction of shape (batch_size, num_channels, height, width)
+
+    Args:
+        dim (int): Dimension of input and output
+        init_dim (int): Dimension of initial convolution
+        out_dim (int): Dimension of output convolution
+        dim_mults (tumple of int): Multiplicative factors for dimension of each
+        channels (int): Number of channels in input and output
+        with_time_emb (bool): Whether to use time embeddings
+        resnet_block_groups (int): Number of groups for resnet blocks
+        use_convnext (bool): Whether to use ConvNextBlock or ResNetBlock
+        convnext_mult (int): Multiplicative factor for ConvNextBlock
+
+    Returns:
+        torch.Tensor: Output of model
+    """
     def __init__(
             self,
             dim,
@@ -36,7 +98,7 @@ class Unet(nn.Module):
         if use_convnext:
             block_klass = partial(ConvNextBlock, mult=convnext_mult)
         else:
-            block_klass = partial(ResnetBlock, groups=resnet_block_groups)
+            block_klass = partial(ResNetBlock, groups=resnet_block_groups)
 
         # time embeddings
         if with_time_emb:
@@ -95,13 +157,15 @@ class Unet(nn.Module):
         )
 
     def forward(self, x, time):
-        x = self.init_conv(x)
 
+        # Conv on noisy images
+        x = self.init_conv(x)
+        # Positional embedding of noise levels
         t = self.time_mlp(time) if exists(self.time_mlp) else None
 
         h = []
 
-        # downsample
+        # Encoder: downsampling
         for block1, block2, attn, downsample in self.downs:
             x = block1(x, t)
             x = block2(x, t)
@@ -109,12 +173,12 @@ class Unet(nn.Module):
             h.append(x)
             x = downsample(x)
 
-        # bottleneck
+        # Bottleneck: ResNet/ConvNext + attention
         x = self.mid_block1(x, t)
         x = self.mid_attn(x)
         x = self.mid_block2(x, t)
 
-        # upsample
+        # Encoder: upsampling
         for block1, block2, attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)
             x = block1(x, t)
@@ -122,4 +186,7 @@ class Unet(nn.Module):
             x = attn(x)
             x = upsample(x)
 
-        return self.final_conv(x)
+        # Final convolution
+        out = self.final_conv(x)
+
+        return out
