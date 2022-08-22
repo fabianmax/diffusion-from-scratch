@@ -33,7 +33,6 @@ transformed_dataset = dataset.with_transform(img_to_tensor_pipeline).remove_colu
 dataloader_train = DataLoader(transformed_dataset["train"], batch_size=batch_size, shuffle=True)
 dataloader_val = DataLoader(transformed_dataset["test"], batch_size=batch_size, shuffle=True)
 
-
 # define the diffusion process parameters
 diffusion_params = create_diffusion_params(timesteps=timesteps)
 
@@ -52,7 +51,7 @@ else:
 model = UNet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,))
 model.to(device)
 
-# Optimzer and training parameters
+# Optimizer and training parameters
 optimizer = Adam(model.parameters(), lr=1e-3)
 epochs = 25
 save_and_sample_every = 1000
@@ -116,7 +115,7 @@ samples = sample(model, diff_dict=diffusion_params, image_size=image_size, batch
 random_index = 5
 plt.imshow(samples[-1][random_index].reshape(image_size, image_size, channels), cmap="gray")
 
-# Create a gif
+# Create a gif of the reversed diffusion process
 random_index = 50
 
 fig = plt.figure()
